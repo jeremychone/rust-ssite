@@ -1,0 +1,43 @@
+[package]
+name = "ssite"
+version = "0.0.1"
+authors = ["Jeremy Chone <jeremy.chone@gmail.com>"]
+edition = "2021"
+include = [
+	"src/**/*",
+	"Cargo.toml",
+	"README.md",
+	"LICENCE"
+]
+homepage = "https://github.com/jeremychone/rust-ssite"
+description = "Static Site Generator"
+repository = "https://github.com/jeremychone/rust-ssite"
+keywords = [
+	"cli",
+	"static_site",
+	"website",
+	"markdown",
+	"handlebars"
+]
+categories = ["command-line-interface"]
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thiserror = "1"
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+clap =  {version = "3", features = ["cargo"]}
+walkdir = "2"
+yaml-rust = "0.4"
+pathdiff = "0.2"
+notify = "4"
+rust-s3 = "0.30"
+regex = "1"
+dirs = "4"
+mime_guess = "2"
+toml = "0.5"
+
+[dev-dependencies]
+anyhow = "1"
