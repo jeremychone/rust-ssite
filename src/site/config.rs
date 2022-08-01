@@ -1,13 +1,10 @@
 use crate::utils::assert_valid_dir;
-use crate::utils::toml::{toml_as_option_string, toml_as_string};
+use crate::utils::toml::toml_as_string;
 use crate::Error;
-use std::fs::{create_dir, create_dir_all, read_to_string};
+use std::fs::{create_dir_all, read_to_string};
 use std::path::{Path, PathBuf};
 use toml::Value;
-use walkdir::{DirEntry, WalkDir};
 
-const CONTENT_DIR_NAME: &str = "content";
-const SITE_DIR_NAME: &str = "_site";
 const CONFIG_FILE_NAME: &str = "ssite.toml";
 
 pub struct SiteConfig {
@@ -49,13 +46,14 @@ impl SiteConfig {
 		let dist_dir = toml_as_string(&toml, &["source", "dist_dir"])?;
 		let dist_dir = root_dir.join(Path::new(&dist_dir));
 		if !dist_dir.exists() {
-			create_dir_all(&dist_dir);
+			// TODO: Handle error
+			let _ = create_dir_all(&dist_dir);
 		}
 		let dist_dir = dist_dir.canonicalize()?;
 
-		let profile = toml_as_string(&toml, &["publish", "bucket_cred_profile"])?;
-		let bucket_name = toml_as_string(&toml, &["publish", "bucket_name"])?;
-		let bucket_root = toml_as_option_string(&toml, &["publish", "bucket_root"]).unwrap_or_else(|| "".to_string());
+		// let profile = toml_as_string(&toml, &["publish", "bucket_cred_profile"])?;
+		// let bucket_name = toml_as_string(&toml, &["publish", "bucket_name"])?;
+		// let bucket_root = toml_as_option_string(&toml, &["publish", "bucket_root"]).unwrap_or_else(|| "".to_string());
 
 		Ok(SiteConfig { content_dir, dist_dir })
 	}

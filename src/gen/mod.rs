@@ -1,9 +1,9 @@
+use crate::consts::FRAME;
 use crate::site::Site;
-use crate::utils::rebase_path;
 use crate::Error;
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
-use std::fs::{self, create_dir_all, read_dir, remove_dir, remove_file};
+use std::fs::{read_dir, remove_dir, remove_file};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
 use std::time::Duration;
@@ -28,8 +28,6 @@ pub async fn gen(site: &Site, watch: bool) -> Result<(), Error> {
 }
 
 async fn copy_content_to_site(site: &Site) -> Result<HashSet<PathBuf>, Error> {
-	let content_dir = site.content_dir();
-
 	// the dst file set
 	let mut dst_set: HashSet<PathBuf> = HashSet::new();
 
@@ -77,7 +75,9 @@ async fn watch_src_dir(site: &Site) -> Result<(), Error> {
 				DebouncedEvent::NoticeWrite(src_file) => handle_src_file_event(site, src_file).await?,
 				DebouncedEvent::NoticeRemove(src_file) => handle_src_file_event(site, src_file).await?,
 				DebouncedEvent::Create(src_file) => handle_src_file_event(site, src_file).await?,
-				DebouncedEvent::Write(src_file) => handle_src_file_event(site, src_file).await?,
+				// For now, set this to void, because, it comes after NoticeWrite and duplicate
+				// Needs to see if we miss some events
+				DebouncedEvent::Write(_src_file) => (),
 				DebouncedEvent::Chmod(src_file) => handle_src_file_event(site, src_file).await?,
 				DebouncedEvent::Remove(src_file) => handle_src_file_event(site, src_file).await?,
 				DebouncedEvent::Rename(_, _) => (),
@@ -97,8 +97,27 @@ async fn handle_src_file_event(site: &Site, src_file: PathBuf) -> Result<(), Err
 		return Ok(());
 	}
 
-	if let Some(file_processor) = FileProcessor::from_src_file(site, src_file) {
-		file_processor.process(site);
+	// if frame change, then, udpate all sub files
+	if src_file.ends_with(FRAME) {
+		if let Some(dir) = src_file.parent() {
+			for entry in WalkDir::new(&dir)
+				.into_iter()
+				.filter_map(|e| e.ok().filter(|f| f.path().is_file()))
+			{
+				let src_file = entry.path();
+				if let Some(processor) = FileProcessor::from_src_file(site, src_file.to_path_buf()) {
+					if processor.is_for_html_render() {
+						// TODO: Handle error
+						let _ = processor.process(site);
+					}
+				}
+			}
+		}
+	}
+	// otherwise, single file processing
+	else if let Some(file_processor) = FileProcessor::from_src_file(site, src_file) {
+		// TODO: Handle error
+		let _ = file_processor.process(site);
 	}
 
 	Ok(())

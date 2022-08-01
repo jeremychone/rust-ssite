@@ -1,13 +1,9 @@
-use toml::to_string;
-
 use crate::consts::{FRAME, INCLUDE_CONTENT};
 use crate::site::Site;
 use crate::utils::{lower_case, rebase_path};
 use crate::xts::{XStr, XString};
 use crate::Error;
 use aho_corasick::AhoCorasick;
-use std::ffi::OsStr;
-use std::format as f;
 use std::fs::{self, create_dir_all};
 use std::path::{Path, PathBuf};
 
@@ -118,10 +114,14 @@ impl FileProcessor {
 		}
 	}
 
+	pub fn is_for_html_render(&self) -> bool {
+		self.src_type.is_for_html_render()
+	}
+
 	/// Render the content as string.
 	/// Return None if the content does not need rendering (can be copied directly)
 	fn render_content(&self, site: &Site) -> Result<Option<String>, Error> {
-		if !self.src_type.is_for_html_render() {
+		if !self.is_for_html_render() {
 			return Ok(None);
 		}
 		let frames = self.get_frames(site);
