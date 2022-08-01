@@ -5,6 +5,12 @@ use std::path::{Path, PathBuf};
 
 pub mod toml;
 
+mod x_string;
+
+// re-export
+
+pub use self::x_string::*;
+
 pub fn lower_case(ostr: Option<&OsStr>) -> Option<String> {
 	ostr.and_then(|s| s.to_str()).and_then(|s| Some(s.to_lowercase()))
 }

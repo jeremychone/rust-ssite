@@ -8,6 +8,7 @@ use toml::Value;
 const CONFIG_FILE_NAME: &str = "ssite.toml";
 
 pub struct SiteConfig {
+	root_dir: PathBuf,
 	content_dir: PathBuf,
 	dist_dir: PathBuf,
 }
@@ -20,10 +21,15 @@ impl SiteConfig {
 	pub fn dist_dir(&self) -> &Path {
 		self.dist_dir.as_ref()
 	}
+	pub fn root_dir(&self) -> &Path {
+		self.root_dir.as_ref()
+	}
 }
 
 impl SiteConfig {
 	pub(super) fn from_dir(root_dir: &Path) -> Result<SiteConfig, Error> {
+		let root_dir = root_dir.canonicalize()?;
+
 		// load S3 info
 		let config_file = root_dir.join(CONFIG_FILE_NAME);
 		if !config_file.exists() {
@@ -32,9 +38,9 @@ impl SiteConfig {
 		let toml = read_to_string(config_file)?;
 		let toml: Value = toml::from_str(&toml)?;
 
-		// TODO: Implement processors
-		let processors = toml.get("processors").and_then(|v| v.as_table()).expect("no processors");
-		for (name, proc_info) in processors {
+		// TODO: Implement runners
+		let runners = toml.get("runners").and_then(|v| v.as_table()).expect("no runners");
+		for (name, proc_info) in runners {
 			println!("{name}: {proc_info:?}");
 		}
 
@@ -55,6 +61,10 @@ impl SiteConfig {
 		// let bucket_name = toml_as_string(&toml, &["publish", "bucket_name"])?;
 		// let bucket_root = toml_as_option_string(&toml, &["publish", "bucket_root"]).unwrap_or_else(|| "".to_string());
 
-		Ok(SiteConfig { content_dir, dist_dir })
+		Ok(SiteConfig {
+			root_dir: root_dir.to_path_buf(),
+			content_dir,
+			dist_dir,
+		})
 	}
 }

@@ -13,6 +13,11 @@ pub trait XStr {
 	fn x_str(&self) -> Option<&str>;
 }
 
+pub trait DispStr {
+	/// Return the &str of the type or Option<T> or &'static "" if None
+	fn disp_str(&self) -> &str;
+}
+
 // region:    --- OsStr
 impl XString for OsStr {
 	#[inline]
@@ -53,13 +58,6 @@ impl XString for PathBuf {
 	}
 }
 
-impl XStr for PathBuf {
-	#[inline]
-	fn x_str(&self) -> Option<&str> {
-		self.to_str()
-	}
-}
-
 impl XString for Option<PathBuf> {
 	#[inline]
 	fn x_string(&self) -> Option<String> {
@@ -70,6 +68,13 @@ impl XString for Option<PathBuf> {
 	}
 }
 
+impl XStr for PathBuf {
+	#[inline]
+	fn x_str(&self) -> Option<&str> {
+		self.to_str()
+	}
+}
+
 impl XStr for Option<&PathBuf> {
 	#[inline]
 	fn x_str(&self) -> Option<&str> {
@@ -77,6 +82,18 @@ impl XStr for Option<&PathBuf> {
 			Some(path) => PathBuf::x_str(path),
 			None => None,
 		}
+	}
+}
+
+impl DispStr for Option<PathBuf> {
+	fn disp_str(&self) -> &str {
+		self.as_ref().and_then(|p| p.to_str()).unwrap_or("")
+	}
+}
+
+impl DispStr for Option<&PathBuf> {
+	fn disp_str(&self) -> &str {
+		self.and_then(|p| p.to_str()).unwrap_or("")
 	}
 }
 // endregion: --- PathBuf

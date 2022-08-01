@@ -1,3 +1,5 @@
+mod processor;
+
 use crate::consts::FRAME;
 use crate::site::Site;
 use crate::Error;
@@ -10,8 +12,6 @@ use std::time::Duration;
 use walkdir::WalkDir;
 
 use self::processor::FileProcessor;
-
-mod processor;
 
 pub async fn gen(site: &Site, watch: bool) -> Result<(), Error> {
 	// copy the content to site

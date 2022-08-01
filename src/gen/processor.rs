@@ -1,9 +1,10 @@
 use crate::consts::{FRAME, INCLUDE_CONTENT};
 use crate::site::Site;
-use crate::utils::{lower_case, rebase_path};
-use crate::xts::{XStr, XString};
+use crate::utils::{lower_case, rebase_path, DispStr};
+use crate::utils::{XStr, XString};
 use crate::Error;
 use aho_corasick::AhoCorasick;
+use pathdiff::diff_paths;
 use std::fs::{self, create_dir_all};
 use std::path::{Path, PathBuf};
 
@@ -53,10 +54,14 @@ pub struct FileProcessor {
 	dist_file: PathBuf,
 }
 
-/// Constructor(s)
+/// Constructors & Getters/Setters
 impl FileProcessor {
 	pub fn from_src_file(site: &Site, src_file: PathBuf) -> Option<Self> {
 		let src_type = SrcType::from_path(&src_file);
+		let dist_file = match src_type {
+			SrcType::Frame => None,
+			_ => Some(get_dist_file(site, &src_type, &src_file)),
+		};
 		match get_dist_file(site, &src_type, &src_file) {
 			Some(dist_file) => Some(FileProcessor {
 				src_file,
@@ -65,6 +70,18 @@ impl FileProcessor {
 			}),
 			None => None,
 		}
+	}
+
+	pub fn is_for_html_render(&self) -> bool {
+		self.src_type.is_for_html_render()
+	}
+
+	pub fn root_rel_dist_file(&self, site: &Site) -> Option<PathBuf> {
+		diff_paths(&self.dist_file, site.root_dir())
+	}
+
+	pub fn root_rel_src_file(&self, site: &Site) -> Option<PathBuf> {
+		diff_paths(&self.src_file, site.root_dir())
 	}
 }
 
@@ -97,25 +114,26 @@ impl FileProcessor {
 				}
 				Err(ex) => println!("Error while rendering file {:?}", ex),
 			}
+			println!(
+				"- process:    {:<40} >>    {}",
+				self.root_rel_src_file(site).disp_str(),
+				self.root_rel_dist_file(site).disp_str()
+			);
 
 			// --- debug
-			let mm = mime_guess::from_path(&self.src_file);
-			let frames = self.get_frames(site);
-			println!(
-				"->> src_file: {}\n     srctype: {:?}\n    dst_file: {}\n        mime: {}",
-				self.src_file.display(),
-				self.src_type,
-				self.dist_file.display(),
-				mm.first_or_octet_stream()
-			);
-			println!("      frames: {frames:?}");
+			// let mm = mime_guess::from_path(&self.src_file);
+			// let frames = self.get_frames(site);
+			// println!(
+			// 	"->> src_file: {}\n     srctype: {:?}\n    dst_file: {}\n        mime: {}",
+			// 	self.src_file.display(),
+			// 	self.src_type,
+			// 	self.dist_file.display(),
+			// 	mm.first_or_octet_stream()
+			// );
+			// println!("      frames: {frames:?}");
 
 			Ok(Some(self.dist_file.to_owned()))
 		}
-	}
-
-	pub fn is_for_html_render(&self) -> bool {
-		self.src_type.is_for_html_render()
 	}
 
 	/// Render the content as string.

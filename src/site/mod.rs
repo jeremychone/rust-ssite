@@ -27,6 +27,10 @@ impl Site {
 		self.config.dist_dir()
 	}
 
+	pub fn root_dir(&self) -> &Path {
+		self.config.root_dir()
+	}
+
 	/// Return the files entries of the content folder
 	#[allow(unused)]
 	pub fn dist_entries(&self) -> impl Iterator<Item = DirEntry> {

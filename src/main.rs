@@ -1,4 +1,4 @@
-// #![allow(unused)] // silence unused warnings while exploring (to comment out)
+#![allow(unused)] // silence unused warnings while exploring (to comment out)
 
 use cmd::cmd_run;
 
@@ -8,7 +8,6 @@ mod error;
 mod gen;
 mod site;
 mod utils;
-mod xts;
 
 pub use error::Error;
 
