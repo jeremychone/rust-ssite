@@ -1,6 +1,60 @@
-use crate::Error;
+use crate::{s, Error};
+use std::collections::HashSet;
 use toml::Value;
 
+// region:    --- Another Approach (one trait for all types)
+pub trait DeepGet {
+	fn deep_get<'v>(&'v self, arr: &[&str]) -> Option<&'v Value>;
+	fn deep_string(&self, arr: &[&str]) -> Result<String, Error>;
+	fn deep_str<'v>(&'v self, arr: &[&str]) -> Result<&'v str, Error>;
+	fn deep_vec_string(&self, arr: &[&str]) -> Result<Vec<String>, Error>;
+}
+
+impl DeepGet for Value {
+	fn deep_get<'v>(&'v self, arr: &[&str]) -> Option<&'v Value> {
+		let mut value: &Value = self;
+
+		for name in arr {
+			value = match value.get(name) {
+				Some(v) => v,
+				None => return None,
+			}
+		}
+
+		Some(value)
+	}
+
+	fn deep_string(&self, arr: &[&str]) -> Result<String, Error> {
+		match self.deep_get(arr).and_then(|v| v.as_str()) {
+			Some(str) => Ok(str.to_string()),
+			None => Err(Error::TomlMissingValue(arr.join(".").to_string())),
+		}
+	}
+
+	fn deep_vec_string(&self, arr: &[&str]) -> Result<Vec<String>, Error> {
+		match self.deep_get(arr).and_then(|v| v.as_array()) {
+			Some(v_arr) => {
+				// FIXME: Should return error cannot be as_str()
+				let v = v_arr
+					.into_iter()
+					.map(|v| v.as_str().map(|v| v.to_string()).unwrap_or("".to_string()))
+					.collect();
+				Ok(v)
+			}
+			None => Err(Error::TomlMissingValue(arr.join(".").to_string())),
+		}
+	}
+
+	fn deep_str<'v>(&'v self, arr: &[&str]) -> Result<&'v str, Error> {
+		self
+			.deep_get(arr)
+			.and_then(|v| v.as_str())
+			.ok_or_else(|| Error::TomlMissingValue(arr.join(".").to_string()))
+	}
+}
+// endregion: --- Another Approach (one trait for all types)
+
+// region:    --- Old Utilities
 pub fn toml_as_string(root: &Value, arr: &[&str]) -> Result<String, Error> {
 	toml_as_option_string(&root, arr).ok_or_else(|| Error::MissingConfigProperty(arr.join(".").to_string()))
 }
@@ -25,3 +79,4 @@ pub fn toml_as_option_value<'v>(root: &'v Value, arr: &[&str]) -> Option<&'v Val
 
 	Some(value)
 }
+// endregion: --- Old Utilities

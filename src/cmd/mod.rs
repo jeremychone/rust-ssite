@@ -1,11 +1,14 @@
 use crate::cmd::app::cmd_app;
 use crate::gen::gen;
-use crate::site::Site;
+use crate::site::{RunMode, Site};
 use crate::utils::assert_valid_dir;
-use crate::Error;
+use crate::{s, Error};
 use clap::ArgMatches;
 use std::env;
 use std::path::Path;
+use std::process::Command;
+use std::time::Duration;
+use tokio::time::sleep;
 
 mod app;
 
@@ -41,5 +44,28 @@ pub async fn cmd_run() -> Result<(), Error> {
 
 async fn exec_dev(dir: &Path, _argm: &ArgMatches) -> Result<(), Error> {
 	let site = Site::from_dir(dir)?;
+
+	// if we have runners we execute them
+	if let Some(runners) = site.runners() {
+		// --- First the the runners for Build
+		for runner in runners.iter().filter(|r| r.has_run_mode(&RunMode::Build)) {
+			println!("Build - Run runner '{}'", runner.name());
+			let mut cmd = runner.get_build_command(dir);
+			cmd.spawn()?.wait();
+		}
+
+		// --- Then the dev
+		for runner in runners.iter().filter(|r| r.has_run_mode(&RunMode::Dev)) {
+			let mut cmd = runner.get_watch_command(dir);
+			let name = s!(runner.name());
+			tokio::spawn(async move {
+				println!("Watch Start - runner: '{name}'");
+				match cmd.spawn().map(|mut p| p.wait()) {
+					Ok(_) => println!("Watch End - runner: '{name}'"),
+					Err(_) => println!("Watch ERROR - runner: '{name}'"),
+				}
+			});
+		}
+	}
 	gen(&site, true).await
 }

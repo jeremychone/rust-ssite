@@ -14,7 +14,7 @@ pub trait XStr {
 }
 
 pub trait DispStr {
-	/// Return the &str of the type or Option<T> or &'static "" if None
+	/// Returns the &str of the T or Option<T> or &'static "" if None
 	fn disp_str(&self) -> &str;
 }
 
