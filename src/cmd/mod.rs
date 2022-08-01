@@ -1,6 +1,5 @@
 use crate::cmd::app::cmd_app;
 use crate::gen::gen;
-use crate::publish::publish;
 use crate::site::Site;
 use crate::utils::assert_valid_dir;
 use crate::Error;
@@ -31,7 +30,6 @@ pub async fn cmd_run() -> Result<(), Error> {
 	// execute the sub command
 	match argm.subcommand() {
 		Some(("dev", sub_cmd)) => exec_dev(&dir, &sub_cmd).await?,
-		Some(("pub", sub_cmd)) => exec_pub(&dir, &sub_cmd).await?,
 		_ => {
 			cmd_app().print_long_help()?;
 			println!("\n");
@@ -44,9 +42,4 @@ pub async fn cmd_run() -> Result<(), Error> {
 async fn exec_dev(dir: &Path, _argm: &ArgMatches) -> Result<(), Error> {
 	let site = Site::from_dir(dir)?;
 	gen(&site, true).await
-}
-
-async fn exec_pub(dir: &Path, _argm: &ArgMatches) -> Result<(), Error> {
-	let site = Site::from_dir(dir)?;
-	publish(&site).await
 }

@@ -5,8 +5,6 @@ use walkdir::{DirEntry, WalkDir};
 
 mod config;
 
-pub use self::config::S3Config;
-
 pub struct Site {
 	config: SiteConfig,
 }
@@ -27,10 +25,6 @@ impl Site {
 
 	pub fn dist_dir(&self) -> &Path {
 		self.config.dist_dir()
-	}
-
-	pub fn s3_config(&self) -> Option<&S3Config> {
-		self.config.s3_config()
 	}
 
 	/// Return the files entries of the content folder

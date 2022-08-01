@@ -5,15 +5,10 @@ pub fn cmd_app() -> Command<'static> {
 		.version(&crate_version!()[..])
 		.arg(arg_root_dir())
 		.subcommand(sub_dev())
-		.subcommand(sub_pub())
 }
 
 fn sub_dev() -> Command<'static> {
 	Command::new("dev").arg(arg_root_dir())
-}
-
-fn sub_pub() -> Command<'static> {
-	Command::new("pub").alias("publish").arg(arg_root_dir())
 }
 
 // region:    Common Args

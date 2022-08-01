@@ -1,4 +1,4 @@
-Yet another Static Site Generator. 
+Yet another Static Site Generator.
 
 **0.0.1 NOT FUNCTIONAL YET**
 

@@ -1,6 +1,6 @@
 [package]
 name = "ssite"
-version = "0.0.1"
+version = "0.0.2-SNAPSHOT"
 authors = ["Jeremy Chone <jeremy.chone@gmail.com>"]
 edition = "2021"
 include = [
@@ -33,11 +33,11 @@ walkdir = "2"
 yaml-rust = "0.4"
 pathdiff = "0.2"
 notify = "4"
-rust-s3 = "0.30"
 regex = "1"
 dirs = "4"
 mime_guess = "2"
 toml = "0.5"
+aho-corasick = "0.7"
 
 [dev-dependencies]
 anyhow = "1"
