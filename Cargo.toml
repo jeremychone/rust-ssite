@@ -1,6 +1,6 @@
 [package]
 name = "ssite"
-version = "0.0.2"
+version = "0.0.3-SNAPSHOT"
 authors = ["Jeremy Chone <jeremy.chone@gmail.com>"]
 edition = "2021"
 include = [
