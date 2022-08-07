@@ -549,7 +549,7 @@ dependencies = [
 
 [[package]]
 name = "ssite"
-version = "0.0.2-SNAPSHOT"
+version = "0.0.2"
 dependencies = [
  "aho-corasick",
  "anyhow",
