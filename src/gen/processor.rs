@@ -4,6 +4,7 @@ use crate::utils::{lower_case, rebase_path, DispStr};
 use crate::utils::{XStr, XString};
 use crate::Error;
 use aho_corasick::AhoCorasick;
+use comrak::{markdown_to_html, ComrakOptions, ComrakRenderOptions};
 use pathdiff::diff_paths;
 use std::fs::{self, create_dir_all};
 use std::path::{Path, PathBuf};
@@ -145,7 +146,25 @@ impl FileProcessor {
 		let frames = self.get_frames(site);
 
 		// if not to render
-		let src_content = fs::read_to_string(&self.src_file)?;
+		let mut src_content = fs::read_to_string(&self.src_file)?;
+
+		// if it is markdown
+		match self.src_type {
+			SrcType::Markdown | SrcType::ReadmeMarkdown => {
+				let render_opts = ComrakRenderOptions {
+					unsafe_: true,
+					..Default::default()
+				};
+
+				let opts = ComrakOptions {
+					render: render_opts,
+					..Default::default()
+				};
+				// unsafe_
+				src_content = markdown_to_html(&src_content, &opts)
+			}
+			_ => (),
+		}
 
 		// TODO: Process content with handlebars
 
@@ -175,7 +194,8 @@ impl FileProcessor {
 		while let Some(dir) = path.parent() {
 			let frame = dir.join(FRAME);
 			if frame.is_file() {
-				frames.push(frame.to_owned())
+				frames.push(frame.to_owned());
+				break;
 			}
 			if dir == site.content_dir() {
 				break;
