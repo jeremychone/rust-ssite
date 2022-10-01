@@ -4,7 +4,8 @@ mod runner;
 use crate::consts::FRAME;
 use crate::site::Site;
 use crate::Error;
-use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use notify_debouncer_mini::{new_debouncer, DebouncedEvent, DebouncedEventKind};
 use std::collections::HashSet;
 use std::fs::{read_dir, remove_dir, remove_file};
 use std::path::{Path, PathBuf};
@@ -66,24 +67,28 @@ async fn watch_src_dir(site: &Site) -> Result<(), Error> {
 	// Create a channel to receive the events.
 	let (tx, rx) = channel();
 
-	let mut watcher: RecommendedWatcher = Watcher::new(tx, Duration::from_secs(2))?;
+	// let mut watcher: RecommendedWatcher = Watcher::new(tx, Duration::from_secs(2))?;
+	let mut debouncer = new_debouncer(Duration::from_millis(2000), None, tx).unwrap();
+
+	let watcher = debouncer.watcher();
+
 	watcher.watch(content_dir, RecursiveMode::Recursive)?;
 
 	// loop on rx
 	loop {
 		match rx.recv() {
-			Ok(event) => match event {
-				DebouncedEvent::NoticeWrite(src_file) => handle_src_file_event(site, src_file).await?,
-				DebouncedEvent::NoticeRemove(src_file) => handle_src_file_event(site, src_file).await?,
-				DebouncedEvent::Create(src_file) => handle_src_file_event(site, src_file).await?,
-				// For now, set this to void, because, it comes after NoticeWrite and duplicate
-				// Needs to see if we miss some events
-				DebouncedEvent::Write(_src_file) => (),
-				DebouncedEvent::Chmod(src_file) => handle_src_file_event(site, src_file).await?,
-				DebouncedEvent::Remove(src_file) => handle_src_file_event(site, src_file).await?,
-				DebouncedEvent::Rename(_, _) => (),
-				DebouncedEvent::Rescan => (),
-				DebouncedEvent::Error(_, _) => (),
+			Ok(events) => match events {
+				Ok(events) => {
+					for DebouncedEvent { path, kind } in events.into_iter() {
+						// Note:  The other kind AnyContinuous is for timeout event, e.g., continuous write, which we do not want
+						// Note: We do not get another type of event now from notify, so just update. The handle_src_file_event will just know if the file is there or not.
+						if let DebouncedEventKind::Any = kind {
+							handle_src_file_event(site, path).await?
+						}
+					}
+				}
+
+				Err(err) => println!("ERROR on Debounced events\n {err:?}"),
 			},
 			Err(e) => println!("watch error: {:?}", e),
 		}

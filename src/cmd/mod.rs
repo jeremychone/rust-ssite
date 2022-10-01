@@ -16,9 +16,9 @@ pub async fn cmd_run() -> Result<(), Error> {
 	let argm = cmd_app().get_matches();
 
 	// get the dir from the root command or sub command
-	let dir = argm.value_of("root_dir").or_else(|| {
+	let dir = argm.get_one::<String>("root_dir").or_else(|| {
 		if let Some((_, sub)) = &argm.subcommand() {
-			sub.value_of("root_dir")
+			sub.get_one::<String>("root_dir")
 		} else {
 			None
 		}
