@@ -1,15 +1,17 @@
+use super::safer_remove_file_and_empty_parent;
 use crate::consts::{FRAME, INCLUDE_CONTENT};
+use crate::prelude::*;
 use crate::site::Site;
 use crate::utils::{lower_case, rebase_path, DispStr};
 use crate::utils::{XStr, XString};
-use crate::Error;
 use aho_corasick::AhoCorasick;
 use comrak::{markdown_to_html, ComrakOptions, ComrakRenderOptions};
 use pathdiff::diff_paths;
-use std::fs::{self, create_dir_all};
+use std::fs::{self, create_dir_all, File};
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
-use super::safer_remove_file_and_empty_parent;
+const DOC_TYPE: &str = "<!DOCTYPE html>";
 
 #[derive(Debug)]
 enum SrcType {
@@ -49,6 +51,7 @@ impl SrcType {
 	}
 }
 
+#[derive(Debug)]
 pub struct FileProcessor {
 	src_file: PathBuf,
 	src_type: SrcType,
@@ -59,10 +62,10 @@ pub struct FileProcessor {
 impl FileProcessor {
 	pub fn from_src_file(site: &Site, src_file: PathBuf) -> Option<Self> {
 		let src_type = SrcType::from_path(&src_file);
-		let dist_file = match src_type {
-			SrcType::Frame => None,
-			_ => Some(get_dist_file(site, &src_type, &src_file)),
-		};
+		// let dist_file = match src_type {
+		// 	SrcType::Frame => None,
+		// 	_ => Some(get_dist_file(site, &src_type, &src_file)),
+		// };
 		match get_dist_file(site, &src_type, &src_file) {
 			Some(dist_file) => Some(FileProcessor {
 				src_file,
@@ -88,7 +91,7 @@ impl FileProcessor {
 
 /// Processors
 impl FileProcessor {
-	pub fn process(&self, site: &Site) -> Result<Option<PathBuf>, Error> {
+	pub fn process(&self, site: &Site) -> Result<Option<PathBuf>> {
 		// if the src file does not exist, then, we clean the dist file
 		if !self.src_file.exists() {
 			safer_remove_file_and_empty_parent(&self.dist_file)?;
@@ -139,11 +142,11 @@ impl FileProcessor {
 
 	/// Render the content as string.
 	/// Return None if the content does not need rendering (can be copied directly)
-	fn render_content(&self, site: &Site) -> Result<Option<String>, Error> {
+	fn render_content(&self, site: &Site) -> Result<Option<String>> {
 		if !self.is_for_html_render() {
 			return Ok(None);
 		}
-		let frames = self.get_frames(site);
+		let frames = self.get_frames(site)?;
 
 		// if not to render
 		let mut src_content = fs::read_to_string(&self.src_file)?;
@@ -186,31 +189,40 @@ impl FileProcessor {
 		}
 	}
 
-	fn get_frames(&self, site: &Site) -> Vec<PathBuf> {
+	fn get_frames(&self, site: &Site) -> Result<Vec<PathBuf>> {
 		let mut path = self.src_file.to_path_buf();
 
 		let mut frames: Vec<PathBuf> = Vec::new();
+
+		// if this file is a doctype html, then, no frames.
+		if is_doctype_html(&path)? {
+			return Ok(frames);
+		}
 
 		while let Some(dir) = path.parent() {
 			let frame = dir.join(FRAME);
 			if frame.is_file() {
 				frames.push(frame.to_owned());
-				break;
+				// if this frame is a doctype html, then, it's the last.
+				if is_doctype_html(&path)? {
+					break;
+				}
 			}
+			// if the dir is the content_dir, then, this the end of line.
 			if dir == site.content_dir() {
 				break;
 			}
 			path = dir.to_path_buf();
 		}
 
-		frames
+		Ok(frames)
 	}
 }
 
 // region:    --- Utils
 
 fn get_dist_file(site: &Site, src_type: &SrcType, src_file: &Path) -> Option<PathBuf> {
-	// if not a file, return None
+	// if not a file, return None.
 	if !src_file.is_file() {
 		return None;
 	}
@@ -241,4 +253,24 @@ fn get_dist_file(site: &Site, src_type: &SrcType, src_file: &Path) -> Option<Pat
 	}
 }
 
+fn is_doctype_html(file: &Path) -> Result<bool> {
+	if file.is_file() {
+		let file = File::open(file)?;
+		let reader = BufReader::new(file);
+		if let Some(Ok(first_line)) = reader.lines().next() {
+			if first_line.trim() == DOC_TYPE {
+				return Ok(true);
+			}
+		}
+	}
+
+	Ok(false)
+}
+
 // endregion: --- Utils
+
+// region:    --- Tests
+#[cfg(test)]
+#[path = "../_tests/tests_processor.rs"]
+mod tests;
+// endregion: --- Tests
