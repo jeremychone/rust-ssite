@@ -1,0 +1,20 @@
+[source]
+content_dir = "content/"
+dist_dir = "_site"
+
+[publish]
+bucket_type = "s3"
+bucket_name = "test-ssite"
+bucket_root = "site-a"
+bucket_cred_type = "profile"
+bucket_cred_profile = "jc-user"
+
+[runner.pcss]
+cmd = "echo"
+args = ["pcss", "args"]
+watch_args = ["pcss", "watch"]
+
+[runner.rollup]
+cmd = "echo"
+args = ["rollup"]
+watch_args = ["rollup","watch"]

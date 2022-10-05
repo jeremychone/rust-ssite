@@ -1,14 +1,14 @@
 #![allow(unused)] // silence unused warnings while exploring (to comment out)
+use crate::prelude::*;
 use cmd::cmd_run;
 
 mod cmd;
-pub mod consts;
+mod consts;
 mod error;
 mod gen;
+mod prelude;
 mod site;
 mod utils;
-
-pub use error::Error;
 
 #[tokio::main]
 async fn main() {
@@ -18,17 +18,5 @@ async fn main() {
 		Err(e) => {
 			println!("Error:\n  {}", e)
 		}
-	};
-}
-
-pub use std::format as f;
-
-#[macro_export]
-macro_rules! s {
-	() => {
-		String::new()
-	};
-	($x:expr $(,)?) => {
-		ToString::to_string(&$x)
 	};
 }

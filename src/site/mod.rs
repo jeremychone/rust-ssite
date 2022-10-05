@@ -148,5 +148,5 @@ impl Site {
 // endregion: --- Runner Impls
 
 #[cfg(test)]
-#[path = "../_tests/test_site_mod.rs"]
+#[path = "../_tests/tests_site_mod.rs"]
 mod tests;

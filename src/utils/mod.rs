@@ -33,5 +33,5 @@ pub fn rebase_path(src_base_dir: &Path, src_file: &Path, dst_base_dir: &Path) ->
 }
 
 #[cfg(test)]
-#[path = "../_tests/utils.rs"]
+#[path = "../_tests/tests_utils.rs"]
 mod tests;

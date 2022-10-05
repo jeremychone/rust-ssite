@@ -1,8 +1,12 @@
+use crate::prelude::*;
+use crate::site::config::tests::_test_infra::TESTS_DATA_DIR;
 use crate::site::config::{RunMode, RunnerConfig, SiteConfig};
 use anyhow::Result;
 use std::collections::HashSet;
 use std::path::Path;
 use toml::Value;
+
+mod _test_infra;
 
 #[test]
 fn site_config_test_from_toml() -> Result<()> {
@@ -25,15 +29,15 @@ fn site_config_test_from_toml() -> Result<()> {
 	let toml: Value = toml::from_str(&toml)?;
 
 	// --- Exec
-	let root_dir = Path::new(".tests-data/site-a").to_path_buf();
+	let root_dir = Path::new(TESTS_DATA_DIR).to_path_buf();
 	let site_config = SiteConfig::from_value(root_dir, toml)?;
 
 	// --- Checks
-	assert_eq!(".tests-data/site-a", site_config.root_dir.to_string_lossy());
+	assert_eq!(TESTS_DATA_DIR, site_config.root_dir.to_string_lossy());
 	let content_dir = site_config.content_dir.to_string_lossy();
 	// Note: Works because string is assume to be ascii 1 byte each
-	let idx = content_dir.len() - ".tests-data/site-a/content".len();
-	assert_eq!(".tests-data/site-a/content", &site_config.content_dir.to_string_lossy()[idx..]);
+	let end_with = f!("{}/content", &TESTS_DATA_DIR[1..]);
+	assert!(content_dir.ends_with(&end_with));
 
 	let r_configs = site_config.runner_configs.as_ref().unwrap();
 	let runner = r_configs.get(0).unwrap();

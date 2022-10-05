@@ -125,5 +125,5 @@ impl RunnerConfig {
 // endregion: --- RunnerConfig
 
 #[cfg(test)]
-#[path = "../_tests/test_site_config.rs"]
+#[path = "../_tests/tests_site_config.rs"]
 mod tests;
