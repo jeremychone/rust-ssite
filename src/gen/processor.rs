@@ -15,11 +15,12 @@ const DOC_TYPE: &str = "<!DOCTYPE html>";
 
 #[derive(Debug)]
 enum SrcType {
-	Frame,
+	FrameHtml,
+	FrameMarkdown,
 	ReadmeMarkdown,
-	Markdown,
 	IndexHtml,
-	Html,
+	PageMarkdown,
+	PageHtml,
 	Other,
 }
 
@@ -27,26 +28,48 @@ impl SrcType {
 	fn from_path(path: &Path) -> Self {
 		let (name, ext) = (lower_case(path.file_name()), lower_case(path.extension()));
 
-		match (name.x_str(), ext.x_str()) {
-			// TODO - if no name, probably should be SrcType::Unknown (so that we do nothing)
-			(Some("readme.md") | Some("README.md"), _) => SrcType::ReadmeMarkdown,
-			(Some("index.html"), _) => SrcType::IndexHtml,
-			(Some("_frame.html"), _) => SrcType::Frame,
-			(Some(_), Some("html")) => SrcType::Html,
-			(Some(_), Some("md")) => SrcType::Markdown,
-			(None, _) => SrcType::Other,
-			(_, _) => SrcType::Other,
+		if let (Some(name), Some(ext)) = (name, ext) {
+			if name == "readme.md" {
+				SrcType::ReadmeMarkdown
+			} else if name == "index.html" {
+				SrcType::IndexHtml
+			}
+			// could be a /_frame.html or page frame, /my-page_frame.html
+			else if name.ends_with("_frame.html") {
+				SrcType::FrameHtml
+			}
+			// same as above
+			else if name.ends_with("_frame.md") {
+				SrcType::FrameMarkdown
+			} else if ext == "md" {
+				SrcType::PageMarkdown
+			} else if ext == "html" {
+				SrcType::PageHtml
+			} else {
+				return SrcType::Other;
+			}
+		} else {
+			return SrcType::Other;
 		}
 	}
 
+	/// Determine if a file that need to be rendered (markdown or html) and put _site.
 	fn is_for_html_render(&self) -> bool {
 		match self {
-			SrcType::ReadmeMarkdown => true,
-			SrcType::Markdown => true,
 			SrcType::IndexHtml => true,
-			SrcType::Html => true,
-			SrcType::Frame => false,
+			SrcType::ReadmeMarkdown => true,
+			SrcType::PageMarkdown => true,
+			SrcType::PageHtml => true,
+			SrcType::FrameHtml => false,
+			SrcType::FrameMarkdown => false,
 			SrcType::Other => false,
+		}
+	}
+
+	fn is_frame(&self) -> bool {
+		match self {
+			SrcType::FrameHtml | SrcType::FrameMarkdown => true,
+			_ => false,
 		}
 	}
 }
@@ -80,6 +103,10 @@ impl FileProcessor {
 		self.src_type.is_for_html_render()
 	}
 
+	pub fn is_frame(&self) -> bool {
+		self.src_type.is_frame()
+	}
+
 	pub fn root_rel_dist_file(&self, site: &Site) -> Option<PathBuf> {
 		diff_paths(&self.dist_file, site.root_dir())
 	}
@@ -97,7 +124,7 @@ impl FileProcessor {
 			safer_remove_file_and_empty_parent(&self.dist_file)?;
 			Ok(None)
 		}
-		// otherwise, we process (e.g., process and copy the src file)
+		// otherwise, we process (e.g., process and copy the src file).
 		else {
 			// --- create the parent dist dir if needed
 			if let Some(dst_dir) = self.dist_file.parent() {
@@ -107,7 +134,7 @@ impl FileProcessor {
 			}
 
 			// --- get the frames
-			// Call render, and if there is some content, we use the content
+			// Call render, and if there is some content, we use the content.
 			// Otherwise, just copy the file
 			match self.render_content(site) {
 				Ok(Some(content)) => {
@@ -124,24 +151,12 @@ impl FileProcessor {
 				self.root_rel_dist_file(site).disp_str()
 			);
 
-			// --- debug
-			// let mm = mime_guess::from_path(&self.src_file);
-			// let frames = self.get_frames(site);
-			// println!(
-			// 	"->> src_file: {}\n     srctype: {:?}\n    dst_file: {}\n        mime: {}",
-			// 	self.src_file.display(),
-			// 	self.src_type,
-			// 	self.dist_file.display(),
-			// 	mm.first_or_octet_stream()
-			// );
-			// println!("      frames: {frames:?}");
-
 			Ok(Some(self.dist_file.to_owned()))
 		}
 	}
 
 	/// Render the content as string.
-	/// Return None if the content does not need rendering (can be copied directly)
+	/// Return None if the content does not need rendering (can be copied directly).
 	fn render_content(&self, site: &Site) -> Result<Option<String>> {
 		if !self.is_for_html_render() {
 			return Ok(None);
@@ -153,7 +168,7 @@ impl FileProcessor {
 
 		// if it is markdown
 		match self.src_type {
-			SrcType::Markdown | SrcType::ReadmeMarkdown => {
+			SrcType::PageMarkdown | SrcType::ReadmeMarkdown => {
 				let render_opts = ComrakRenderOptions {
 					unsafe_: true,
 					..Default::default()
@@ -169,7 +184,7 @@ impl FileProcessor {
 			_ => (),
 		}
 
-		// TODO: Process content with handlebars
+		// TODO: Process content with handlebars.
 
 		if frames.len() == 0 {
 			Ok(Some(src_content))
@@ -199,6 +214,12 @@ impl FileProcessor {
 			return Ok(frames);
 		}
 
+		// first, check if we have page frame.
+		if let Some(page_frame) = get_page_frame_for_file(&path) {
+			frames.push(page_frame);
+		}
+
+		// then, walk the path back.
 		while let Some(dir) = path.parent() {
 			let frame = dir.join(FRAME);
 			if frame.is_file() {
@@ -227,7 +248,7 @@ fn get_dist_file(site: &Site, src_type: &SrcType, src_file: &Path) -> Option<Pat
 		return None;
 	}
 
-	if let SrcType::Frame = src_type {
+	if src_type.is_frame() {
 		return None;
 	}
 
@@ -237,7 +258,7 @@ fn get_dist_file(site: &Site, src_type: &SrcType, src_file: &Path) -> Option<Pat
 	if let Some(mut dist_file) = rebase_path(content_dir, src_file, site_dist_dir) {
 		let new_file_name = match src_type {
 			SrcType::ReadmeMarkdown => Some("index.html".to_owned()),
-			SrcType::Markdown | SrcType::Html => dist_file.file_stem().x_string(),
+			SrcType::PageMarkdown | SrcType::PageHtml => dist_file.file_stem().x_string(),
 			_ => None,
 		};
 
@@ -251,6 +272,19 @@ fn get_dist_file(site: &Site, src_type: &SrcType, src_file: &Path) -> Option<Pat
 	} else {
 		None
 	}
+}
+
+/// Return the eventual page_frame.html or .md if exists
+fn get_page_frame_for_file(file: &Path) -> Option<PathBuf> {
+	if let (Some(stem), Some(dir)) = (file.file_stem().x_str(), file.parent()) {
+		for ext in ["html", "md"] {
+			let page_frame = dir.join(f!("{stem}_frame.{ext}"));
+			if page_frame.is_file() {
+				return Some(page_frame);
+			}
+		}
+	}
+	None
 }
 
 fn is_doctype_html(file: &Path) -> Result<bool> {
