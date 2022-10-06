@@ -72,6 +72,13 @@ impl SrcType {
 			_ => false,
 		}
 	}
+
+	fn is_markdown(&self) -> bool {
+		match self {
+			SrcType::FrameMarkdown | SrcType::PageMarkdown => true,
+			_ => false,
+		}
+	}
 }
 
 #[derive(Debug)]
@@ -161,27 +168,27 @@ impl FileProcessor {
 		if !self.is_for_html_render() {
 			return Ok(None);
 		}
+
+		// --- Markdown options
+		let render_opts = ComrakRenderOptions {
+			unsafe_: true,
+			..Default::default()
+		};
+
+		let opts = ComrakOptions {
+			render: render_opts,
+			..Default::default()
+		};
+
+		// --- Get grames
 		let frames = self.get_frames(site)?;
 
-		// if not to render
+		// --- Render Page
 		let mut src_content = fs::read_to_string(&self.src_file)?;
 
-		// if it is markdown
-		match self.src_type {
-			SrcType::PageMarkdown | SrcType::ReadmeMarkdown => {
-				let render_opts = ComrakRenderOptions {
-					unsafe_: true,
-					..Default::default()
-				};
-
-				let opts = ComrakOptions {
-					render: render_opts,
-					..Default::default()
-				};
-				// unsafe_
-				src_content = markdown_to_html(&src_content, &opts)
-			}
-			_ => (),
+		// If markdown, render html.
+		if self.src_type.is_markdown() {
+			src_content = markdown_to_html(&src_content, &opts)
 		}
 
 		// TODO: Process content with handlebars.
@@ -189,12 +196,29 @@ impl FileProcessor {
 		if frames.len() == 0 {
 			Ok(Some(src_content))
 		} else {
-			let patterns = &[INCLUDE_CONTENT];
+			let include_content_ac_patterns = &[INCLUDE_CONTENT];
+			let include_content_p_clean_ac_patterns = &[f!("<p>{INCLUDE_CONTENT}</p>")];
 			let mut content = src_content;
 
 			for frame in frames.iter() {
-				let frame_content = fs::read_to_string(frame)?;
-				let ac = AhoCorasick::new(patterns);
+				let frame_type = SrcType::from_path(frame);
+				let mut frame_content = fs::read_to_string(frame)?;
+
+				// If markdown, render html.
+				if frame_type.is_markdown() {
+					frame_content = markdown_to_html(&frame_content, &opts);
+
+					// Note: Here if we have INCLUDE_CONTENT, it will render as <p>INCLUDE_CONTENT</p>,
+					//       and the p tags should be removed.
+					//       This is important, otherwise, all content will be wrapped in <p></p>.
+					let ac = AhoCorasick::new(include_content_p_clean_ac_patterns);
+					let res = ac.replace_all_bytes(frame_content.as_bytes(), &[INCLUDE_CONTENT]);
+					let rendered = std::str::from_utf8(&res).unwrap();
+					frame_content = rendered.to_string();
+				}
+
+				// Now, inlude the content.
+				let ac = AhoCorasick::new(include_content_ac_patterns);
 				let res = ac.replace_all_bytes(frame_content.as_bytes(), &[&content]);
 				let rendered = std::str::from_utf8(&res).unwrap();
 				content = rendered.to_string();
