@@ -1,6 +1,6 @@
 Yet another Static Site Generator.
 
-**0.0.2 NOT FUNCTIONAL YET**
+**0.0.3 starting to work**
 
 First goals: 
 

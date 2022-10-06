@@ -833,7 +833,7 @@ dependencies = [
 
 [[package]]
 name = "ssite"
-version = "0.0.3-SNAPSHOT"
+version = "0.0.3"
 dependencies = [
  "aho-corasick",
  "anyhow",
